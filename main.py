@@ -32,7 +32,7 @@ def main():
         data_density = get_density_data(s, config[image_folder.name])
         out_data_density[image_folder.name] = data_density
 
-    with open("./data/outcrops_tests.json", 'w+') as json_file:
+    with open("./data/outcrops_densities.json", 'w+') as json_file:
         json.dump(out_data_density, json_file, indent=4)
 
 
