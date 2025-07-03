@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from pathlib import Path
 
 import numpy as np
@@ -18,35 +19,71 @@ from distrebution_test import DistributionTest
 
 def main():
     data_folder = Path("/media/koladik/HardDisk/data/OutcropData")
-    out_data = {}
+    out_data_density = {}
     with open("./data/config.json") as file:
         config = json.load(file)
 
     for i, image_folder in enumerate(data_folder.iterdir()):
         print(image_folder.name)
         image_data, _ = ImageData.load(image_folder)
+        #
         s = get_areas(image_data)
-        data = get_density_data(s, config)
-        out_data[image_folder.name] = data
+        # density evaluate
+        data_density = get_density_data(s, config[image_folder.name])
+        out_data_density[image_folder.name] = data_density
 
     with open("./data/outcrops_tests.json", 'w+') as json_file:
-        json.dump(out_data, json_file, indent=4)
+        json.dump(out_data_density, json_file, indent=4)
 
 
 def get_density_data(s, config):
+    # вычисление размера пикселя
+    pix2m = (config["m"] / config["pix"])
+    s = np.delete(s, np.argmax(s))
     xmin = np.min(s)
     xmax = np.max(s)
-    bins = np.logspace(np.log10(xmin), np.log10(xmax), 10)
-    hist, bins = np.histogram(s, bins)
-    hist = hist / (np.sum(s))
+
+    # Начальное число бинов
+    n_bins = 10
+    min_bins = 7  # минимальное допустимое число бинов
+
+    # Логарифмические бины
+    hist = None
+    bins = None
+    while True:
+        bins = np.logspace(np.log10(xmin), np.log10(xmax), n_bins)
+        hist, bins = np.histogram(s, bins=bins)
+        if np.all(hist > 0):
+            break
+        elif n_bins > min_bins:
+            n_bins -= 1
+        else:
+            break
+
+    # маска для ненулевых значений гистограммы
+    mask = hist > 0
+
+    # Вычисляем плотность
+    bin_widths = np.diff(bins)
+    rho = np.log10(hist[mask]) - np.log10(bin_widths[mask] * np.sum(s)) + 4*np.log10(pix2m)
+
+    # Средние точки бинов
+    s_rho = (bins[:-1] + bins[1:]) / 2
+    s_rho = np.log(s_rho[mask]) + 2*np.log10(pix2m)
+
+    # Преобразуем в список для JSON-сериализации
     data = {
-        "bins": bins.tolist(),
-        "hist": hist.tolist()
+        "s": s_rho.tolist(),
+        "rho": rho.tolist(),
+        "unit": "log m2"
     }
     return data
 
 
 def get_data(s, config):
+    pix2m = (config["m"] / config["pix"])
+    s = np.delete(s, np.argmax(s))
+
     name = image_folder.name
 
     pix2m2 = (config[name]["m"] / config[name]["pix"]) ** 2

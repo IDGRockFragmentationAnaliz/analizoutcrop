@@ -1,27 +1,27 @@
 from pathlib import Path
-
 import numpy as np
-import cv2
-import scipy as sp
 import json
 import matplotlib.pyplot as plt
-
-
-from rocknetmanager.tools.image_data import ImageData
-from pyrocksegmentation.basic_segmentator import Segmentator
-from pyrockstats.distrebutions import lognorm, weibull, paretoexp
-from pyrockstats.bootstrap.ks_statistics import get_ks_distribution
-from pyrockstats.bootstrap.ks_statistics import get_confidence_value
-from pyrockstats.empirical import ecdf
-from distrebution_test import DistributionTest
 
 
 def main():
     with open("./data/outcrops_tests.json") as file:
         data = json.load(file)
-    data = data["IMGP3286"]
-    bins = data["bins"]
-    hist = data["hist"]
+
+    for name in data:
+        print(name)
+        _data = data[name]
+        _data["x"] = _data["s"]
+        _data["y"] = _data["rho"]
+
+
+    fig = plt.figure(figsize=(12, 4))
+    axs = [fig.add_subplot(1, 1, 1)]
+    for name in data:
+        x = data[name]["x"]
+        y = data[name]["y"]
+        axs[0].plot(x, y)
+    plt.show()
 
 if __name__ == "__main__":
     main()
