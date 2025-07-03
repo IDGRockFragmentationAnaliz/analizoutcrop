@@ -24,28 +24,31 @@ def main():
 
     for i, image_folder in enumerate(data_folder.iterdir()):
         print(image_folder.name)
-        data = get_data(image_folder, config)
-        
-        # fig = plt.figure(figsize=(12, 4))
-        # axs = [fig.add_subplot(1, 1, 1)]
-        # axs[0].plot(x, tests["lognorm"].model_cdf(x))
-        # axs[0].plot(data["ecdf"]["values"], data["ecdf"]["freqs"], color="black", linestyle="--", label="2")
-        # axs[0].set_xscale('log')
-        # plt.show()
-
+        image_data, _ = ImageData.load(image_folder)
+        s = get_areas(image_data)
+        data = get_density_data(s, config)
         out_data[image_folder.name] = data
 
     with open("./data/outcrops_tests.json", 'w+') as json_file:
         json.dump(out_data, json_file, indent=4)
 
 
+def get_density_data(s, config):
+    xmin = np.min(s)
+    xmax = np.max(s)
+    bins = np.logspace(np.log10(xmin), np.log10(xmax), 10)
+    hist, bins = np.histogram(s, bins)
+    hist = hist / (np.sum(s))
+    data = {
+        "bins": bins.tolist(),
+        "hist": hist.tolist()
+    }
+    return data
 
-def get_data(image_folder, config):
+
+def get_data(s, config):
     name = image_folder.name
 
-    image_data, _ = ImageData.load(image_folder)
-
-    s = get_areas(image_data)
     pix2m2 = (config[name]["m"] / config[name]["pix"]) ** 2
 
     s = s[1:]
@@ -61,9 +64,6 @@ def get_data(image_folder, config):
     thetas = {name: (float(test.theta[0]), float(test.theta[1])) for name, test in tests.items()}
     values, e_freq = ecdf(areas)
     x = np.logspace(np.log10(xmin), np.log10(xmax), 100)
-    bins = np.logspace(np.log10(xmin), np.log10(xmax), 10)
-    hist, bins = np.histogram(areas, bins)
-    hist = hist / (np.sum(s) * pix2m2)
     alpha = 0.05
     data = {
         "x": x.tolist(),
@@ -73,8 +73,6 @@ def get_data(image_folder, config):
         "test_data": {name: test.get_data(x, alpha) for name, test in tests.items()},
         "ecdf": {"values": values.tolist(), "freqs": e_freq.tolist()},
         "theta": {name: tests[name].theta for name, test in tests.items()},
-        "bins": bins.tolist(),
-        "density": hist.tolist(),
         "units": "m2"
     }
     return data
@@ -96,3 +94,11 @@ def get_areas(image_data: ImageData):
 if __name__ == "__main__":
     main()
 
+
+
+# fig = plt.figure(figsize=(12, 4))
+# axs = [fig.add_subplot(1, 1, 1)]
+# axs[0].plot(x, tests["lognorm"].model_cdf(x))
+# axs[0].plot(data["ecdf"]["values"], data["ecdf"]["freqs"], color="black", linestyle="--", label="2")
+# axs[0].set_xscale('log')
+# plt.show()
