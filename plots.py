@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 
 def main():
-    with open("./data/outcrops_tests.json") as file:
+    with open(".//data//outcrops_densities.json") as file:
         data = json.load(file)
 
     for name in data:

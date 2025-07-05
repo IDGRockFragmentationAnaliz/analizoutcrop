@@ -18,7 +18,7 @@ from distrebution_test import DistributionTest
 
 
 def main():
-    data_folder = Path("/media/koladik/HardDisk/data/OutcropData")
+    data_folder = Path("D://1.ToSaver//data//outcrop_data")
     out_data_density = {}
     with open("./data/config.json") as file:
         config = json.load(file)
@@ -130,12 +130,3 @@ def get_areas(image_data: ImageData):
 
 if __name__ == "__main__":
     main()
-
-
-
-# fig = plt.figure(figsize=(12, 4))
-# axs = [fig.add_subplot(1, 1, 1)]
-# axs[0].plot(x, tests["lognorm"].model_cdf(x))
-# axs[0].plot(data["ecdf"]["values"], data["ecdf"]["freqs"], color="black", linestyle="--", label="2")
-# axs[0].set_xscale('log')
-# plt.show()
