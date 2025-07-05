@@ -65,11 +65,11 @@ def get_density_data(s, config):
 
     # Вычисляем плотность
     bin_widths = np.diff(bins)
-    rho = np.log10(hist[mask]) - np.log10(bin_widths[mask] * np.sum(s)) + 4*np.log10(pix2m)
+    rho = np.log10(hist[mask]) - np.log10(bin_widths[mask] * np.sum(s)) - 4*np.log10(pix2m)
 
     # Средние точки бинов
     s_rho = (bins[:-1] + bins[1:]) / 2
-    s_rho = np.log(s_rho[mask]) + 2*np.log10(pix2m)
+    s_rho = np.log10(s_rho[mask]) + 2*np.log10(pix2m)
 
     # Преобразуем в список для JSON-сериализации
     data = {
