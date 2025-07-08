@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import math
 import numpy as np
 
 from rocknetmanager.tools.shape_load import shape_load
@@ -22,14 +22,18 @@ class DistributionTest:
         self.xmax = np.max(areas)
         self.areas = areas
         self.model = model
-        self.ks = get_ks_distribution(areas, model, n_ks=500)
+        self.ks = get_ks_distribution(areas, model, n_ks=1000)
         self.theta = self.model.fit(areas, xmin=self.xmin, xmax=self.xmax)
         self.dist = self.model(*self.theta, xmin=self.xmin, xmax=self.xmax)
         self.confidence_value = None
         self.alpha = None
         self.hypothesis = None
+        self.d = None
+        self.e_cdf = None
+        self.e_values = None
+        self.p_value = None
 
-    def get_confidence_value(self, alpha):
+    def get_confidence(self, alpha):
         if self.alpha is not None and alpha == self.alpha:
             return self.confidence_value
         self.alpha = alpha
@@ -38,25 +42,56 @@ class DistributionTest:
 
     def model_cdf(self, x):
         return self.dist.cdf(x, xmin=self.xmin, xmax=self.xmax)
-
-    def ks_test(self, alpha, e_values = None, e_cdf = None):
-        if e_values is None or e_cdf is None:
-            e_values, e_cdf = ecdf(self.areas)
-        confidence_value = self.get_confidence_value(alpha)
-        cdf_min = self.model_cdf(e_values) - confidence_value
-        cdf_max = self.model_cdf(e_values) + confidence_value
-        self.hypothesis = np.all(cdf_min < e_cdf) and np.all(cdf_max > e_cdf)
+    
+    def get_ecdf(self):
+        if self.e_values is not None and self.e_cdf is not None:
+            return self.e_values, self.e_cdf
+        self.e_values, self.e_cdf = ecdf(self.areas)
+        return self.e_values, self.e_cdf
+    
+    def get_ks_norm(self):
+        if self.d is not None:
+            return self.d
+        e_values, e_cdf = self.get_ecdf()
+        self.d = np.max(np.abs(self.model_cdf(e_values) - e_cdf))
+        return self.d
+    
+    def ks_test(self, alpha):
+        if self.hypothesis is not None and self.alpha == alpha:
+            return self.hypothesis
+        self.hypothesis = self.get_ks_norm() <= self.get_confidence(alpha)
         return self.hypothesis
-
+    
+    def get_p_value(self):
+        if self.p_value is not None:
+            return self.p_value
+        d = self.get_ks_norm()
+        e_values, e_cdf = ecdf(self.ks)
+        idx = np.searchsorted(e_values, d, side='right')
+        if idx == 0:
+            p_value = 1.0  # Если D меньше всех значений в self.ks
+        else:
+            p_value = 1.0 - e_cdf[idx - 1]
+        self.p_value = p_value
+        return self.p_value
+    
     def get_data(self, x, alpha):
-        confidence_value = self.get_confidence_value(alpha)
+        confidence_value = self.get_confidence(alpha)
         cdf = self.model_cdf(x)
         cdf_min = cdf - confidence_value
         cdf_max = cdf + confidence_value
+        hypothesis = self.ks_test(alpha)
+        d = self.get_ks_norm()
+        p_value = self.get_p_value()
+        theta = self.theta
         data = {
             "cdf": cdf.tolist(),
             "cdf_min": cdf_min.tolist(),
             "cdf_max": cdf_max.tolist(),
-            "ks_test": str(self.ks_test(alpha))
+            "ks_test": str(hypothesis),
+            "d": d,
+            "p_value": p_value,
+            "theta": theta
         }
         return data
+    
